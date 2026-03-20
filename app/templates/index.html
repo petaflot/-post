@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Posts</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <!-- PNG fallback for browsers that do not support SVG favicons -->
+    <!-- link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png" --!>
+
+    <style>
+        /* Basic styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+	div.moto {
+            margin: 10px;
+            padding: 5px;
+	    border: dashed 3px grey;
+	    overflow: hidden;
+	    width: 20em;
+	    text-align: center;
+	    background: #c0c0c0
+	}
+
+        h2 {
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            padding: 8px;
+            margin-bottom: 20px;
+            width: 300px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 3px 12px;
+            font-size: 14px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+
+        /* Table Styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 3px; /* 3px padding for th and td */
+            text-align: left;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        tr:nth-child(odd) {
+            background-color: #f9f9f9;
+        }
+
+        tr:nth-child(even) {
+            background-color: #ffffff;
+        }
+
+        .domain-row {
+            background-color: #f0f8ff;
+        }
+
+        /* Favicon styling */
+        img {
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<h2><a{{ url_for('static', filename='favicon.svg') }} href="https://xpost.com/"><img src="{{ url_for('static', filename='favicon.svg') }}" height=42></a>⨯post</h2>
+
+<div class='moto'><i>"keeping track of your POST data"</i></div>
+
+
+<input type="text" id="search" placeholder="Filter URL...">
+<button onclick="purgeAllPosts()">Purge All Records</button>
+
+<div id="postsContainer"></div>
+
+<script>
+const postsContainer = document.getElementById("postsContainer");
+const searchInput = document.getElementById("search");
+
+let allPosts = [];
+let protectedPosts = []; // Array to track protected posts
+let currentDomain = '';
+
+// ---- Helpers ----
+
+function formatDate(ts) {
+    const d = new Date(ts * 1000);
+    return d.toISOString().slice(11, 19); // HH:MM:ss
+}
+
+function formatDay(ts) {
+    const d = new Date(ts * 1000);
+    return d.toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+function clear() {
+    postsContainer.innerHTML = "";
+}
+
+function getDomain(url) {
+    const { hostname } = new URL(url);
+    return hostname;
+}
+
+function getFaviconUrl(url) {
+    const domain = getDomain(url);
+    return `https://www.google.com/s2/favicons?domain=${domain}`;
+}
+
+function render(posts) {
+    clear();
+
+    let currentDay = null;
+
+    posts.forEach((p, index) => {
+        const time = formatDate(p.timestamp);
+        const day = formatDay(p.timestamp); // Get the day for each post
+        const url = new URL(p.url);
+        const baseUrl = `${url.protocol}//${url.hostname}${url.pathname}`;
+        const displayUrl = baseUrl + (url.search ? '...' : ''); // Hide GET params
+
+        // Favicon handling
+        const faviconUrl = getFaviconUrl(p.url);
+        const postDomain = getDomain(p.url);
+
+        // Determine if we should flip styles based on domain change
+        const isNewDomain = postDomain !== currentDomain;
+        currentDomain = postDomain; // Update current domain for comparison
+
+        // Check if the day changed, and render a date header
+        if (day !== currentDay) {
+            currentDay = day;
+            const dayHeader = document.createElement("h3");
+            dayHeader.textContent = currentDay; // Display the day
+            const purgeButton = document.createElement("button");
+            purgeButton.textContent = "Purge";
+            purgeButton.onclick = () => purgePostsForDay(currentDay);
+
+            const container = document.createElement("div");
+            container.appendChild(dayHeader);
+            container.appendChild(purgeButton);
+            postsContainer.appendChild(container);
+        }
+
+        const row = document.createElement("tr");
+
+        // Toggle the row style based on domain change
+        if (isNewDomain && index !== 0) {
+            row.classList.add('domain-row');
+        }
+
+        // Check if the post is protected
+        const isProtected = protectedPosts.includes(p.uuid);
+
+        row.innerHTML = `
+            <td>
+                <img src="${faviconUrl}" alt="favicon" width="16" height="16" />
+                <a href="${p.url}" target="_blank">${displayUrl}</a>
+            </td>
+            <td>${time}</td>
+            <td>
+                ${isProtected ? '' : `<button onclick="deletePost('${p.uuid}')">🗑</button>`}
+            </td>
+            <td>
+                <button onclick="reportPost('${p.uuid}')">�</button>
+            </td>
+            <td>
+                <input type="checkbox" ${isProtected ? 'checked' : ''} onclick="protectPost('${p.uuid}', this)">
+            </td>
+        `;
+
+        postsContainer.appendChild(row);
+    });
+}
+
+// ---- Actions ----
+
+async function deletePost(uuid) {
+    await fetch(`/posts/${uuid}`, { method: "DELETE" });
+
+    allPosts = allPosts.filter(p => p.uuid !== uuid);
+    applyFilter();
+}
+
+async function reportPost(uuid) {
+    // OPTION A: direct external call
+    await fetch("https://example.com/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uuid })
+    });
+
+    alert("Reported");
+}
+
+async function purgeAllPosts() {
+    if (confirm("Are you sure you want to purge all posts?")) {
+        // Remove protected posts before purging
+        const postsToDelete = allPosts.filter(p => !protectedPosts.includes(p.uuid));
+        for (const post of postsToDelete) {
+            await fetch(`/posts/${post.uuid}`, { method: "DELETE" });
+        }
+
+        allPosts = allPosts.filter(p => protectedPosts.includes(p.uuid)); // Keep protected posts
+        render(allPosts);
+    }
+}
+
+async function purgePostsForDay(day) {
+    if (confirm(`Are you sure you want to purge all records for ${day}?`)) {
+        // Remove protected posts before purging
+        const postsToDelete = allPosts.filter(p => formatDay(p.timestamp) === day && !protectedPosts.includes(p.uuid));
+
+        for (const post of postsToDelete) {
+            await fetch(`/posts/${post.uuid}`, { method: "DELETE" });
+        }
+
+        // Keep only the posts for the selected day and protected posts
+        allPosts = allPosts.filter(p => formatDay(p.timestamp) !== day || protectedPosts.includes(p.uuid));
+        render(allPosts); // Re-render the filtered posts
+    }
+}
+
+function protectPost(uuid, checkbox) {
+    if (checkbox.checked) {
+        // Protect the post (hide delete button)
+        protectedPosts.push(uuid);
+    } else {
+        // Unprotect the post (ask for confirmation before revealing the delete button)
+        if (confirm("Are you sure you want to unprotect this post and show the delete button again?")) {
+            protectedPosts = protectedPosts.filter(id => id !== uuid);
+        } else {
+            // Revert checkbox to protected state
+            checkbox.checked = true;
+        }
+    }
+
+    render(allPosts); // Re-render the posts with updated protection status
+}
+
+// ---- Filtering ----
+
+function applyFilter() {
+    const q = searchInput.value.toLowerCase();
+
+    const filtered = allPosts.filter(p =>
+        p.url.toLowerCase().includes(q)
+    );
+
+    render(filtered);
+}
+
+searchInput.addEventListener("input", applyFilter);
+
+// ---- Initial load ----
+
+fetch("/posts")
+    .then(r => r.json())
+    .then(data => {
+        allPosts = data.sort((a, b) => b.timestamp - a.timestamp); // Sort by timestamp (latest first)
+        applyFilter();
+    });
+
+// ---- Live updates ----
+
+const ws = new WebSocket("ws://" + location.host + "/stream");
+
+ws.onmessage = e => {
+    const p = JSON.parse(e.data);
+
+    allPosts.unshift(p); // Newest first
+    applyFilter();
+};
+</script>
+
+</body>
+</html>

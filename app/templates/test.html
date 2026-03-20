@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h2>Proxy test</h2>
+
+Hello! this is a test form to verify the interceptor works as expected ; when submitted, <em>⨯post</em> will print the result in the console, but nothing else. You can then check in the <a href='/'>post list</a> if the content of the form is there it means you're good. This also allows testing the regex strings set in config.json.
+
+<form method="post">
+    <input type="text" name="email" placeholder="Enter your e-mail"><br/>
+    <input type="text" name="name" placeholder="Enter your name"><br/>
+    <input type="password" name="password" placeholder="Chose password"><br/>
+    <textarea name="comment" placeholder="Write something nice"></textarea><br/>
+    <button type="submit">Submit</button>
+</form>
+
+
+<h3>Before we run into SSL issues...</h3>
+
+Have you installed the <a href="http://mitm.it/">Certificate Authority</a> in your browser?
+
+</body>
+</html>

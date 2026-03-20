@@ -1,0 +1,40 @@
+{
+  "log_dir": "logs",
+  "method_filters": {
+    "GET": "^$",
+    "POST": "^$",
+    "CRAP": "^(?!https?://(?:[a-zA-Z0-9-]+\\.)?(mon-net\\.org|chatgpt\\.com|exclude\\.com$|ignore\\.example\\.com|google|telemetry|github\\.com|ads\\.mozilla\\.org|ajay\\.app|ketchcdn\\.com|ngrok.\\com|youtube\\.com/(api|youtubei))).*(?!https?://(?:[a-zA-Z0-9-]+\\.)?(include\\.exclude\\.com|create_comment)).*"
+  },
+  "field_rules": [
+    {
+      "pattern": "email",
+      "log_name": "email",
+      "value_regex": "(^.).*(@.*$)",
+      "mode": "obfuscate"
+    },
+    {
+      "pattern": "phone",
+      "log_name": "phone",
+      "value_regex": "\\d",
+      "mode": "obfuscate"
+    },
+    {
+      "pattern": "(pass|pwd|token|secret|auth)",
+      "log_name": null,
+      "value_regex": null,
+      "mode": "never"
+    },
+    {
+      "pattern": "(username|name|login)",
+      "log_name": "login",
+      "value_regex": null,
+      "mode": "log"
+    },
+    {
+      "pattern": ".*",
+      "log_name": null,
+      "value_regex": null,
+      "mode": "log"
+    }
+  ]
+}

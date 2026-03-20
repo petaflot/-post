@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h2>Post Details</h2>
+<div id="content"></div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const uuid = params.get("uuid");
+
+fetch("/posts/" + uuid)
+    .then(r => r.json())
+    .then(data => {
+        const div = document.getElementById("content");
+
+        div.innerHTML = `
+            <p><b>URL:</b> ${data.url}</p>
+            <p><b>Timestamp:</b> ${data.timestamp}</p>
+            <h3>Fields</h3>
+        `;
+
+        data.fields.forEach(f => {
+            const el = document.createElement("div");
+            el.innerHTML = `<b>${f.name}</b>: ${f.content}`;
+            div.appendChild(el);
+        });
+    });
+</script>
+</body>
+</html>
