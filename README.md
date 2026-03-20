@@ -17,7 +17,9 @@
 
 ## Installation
 
-* Install local proxy and run it
+### Local proxy
+
+* call `./run.sh` in the project root
 * Configure your browser to use 127.0.0.1:8080 as HTTP and HTTPS proxy
 * Go to http://mitm.it and download the certificate (it is generated locally)
 * Install certificate:
@@ -29,6 +31,12 @@
 * Visit http://localhost:12345/ to view your post history and do the chosen action (delete, re-publish, etc..)
     * Use http://your.ip.address:12345/test to verify everything works as expected (caveat: some browsers like Firefox do not use the configured proxy for local addresses)
 
+### Alterntaive: browser extension
+
+* call `./run.sh` in the project root
+* visit http://172.16.100.11:12345/about for further instructions
+
+Note: this is untested!
 
 ## Structure du projet
 ```
