@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Install Extension</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <script>
+        // Browser Detection
+        function detectBrowser() {
+            const userAgent = navigator.userAgent;
+
+            if (userAgent.indexOf("Chrome") > -1) {
+                return "Chrome";
+            } else if (userAgent.indexOf("Firefox") > -1) {
+                return "Firefox";
+            } else if (userAgent.indexOf("Edg") > -1) {
+                return "Edge";
+            } else if (userAgent.indexOf("Safari") > -1) {
+                return "Safari";
+            } else {
+                return "Unknown";
+            }
+        }
+
+        function showInstallationInstructions() {
+            const browser = detectBrowser();
+            const installSection = document.getElementById("install-section");
+            const installMessage = document.getElementById("install-message");
+            const installLink = document.getElementById("install-link");
+
+            switch (browser) {
+                case "Chrome":
+                    installMessage.innerText = "To install the extension on Chrome:";
+                    //installLink.innerHTML = 'Click <a href="https://chrome.google.com/webstore/detail/your-extension-id" target="_blank">here</a> to install it from the Chrome Web Store.';
+		    installLink.innerHTML = '<ul><li>Go to <a href="chrome://extensions/">chrome://extensions/</a></li><li>Enable <em>Developer Mode</em></li><li>Click <em>Load Unpacked</em> and select the folder containing your extension files ; optionally, download and select this <a href="">ZIP archive</a></li>'
+                    break;
+                case "Firefox":
+                    installMessage.innerText = "To install the extension on Firefox:";
+                    //installLink.innerHTML = 'Click <a href="https://addons.mozilla.org/en-US/firefox/addon/your-extension-id" target="_blank">here</a> to install it from the Firefox Add-ons store.';
+		    installLink.innerHTML = '<ul><li>Go to <a href="about:debugging">about:debugging</a></li><li>Click <em>This Firefox</em></li><li>Click <em>Load Temporary Add-on</em> and select the folder containing your extension files ; optionally, download and select this <a href="">ZIP archive</a></li>'
+                    break;
+                case "Edge":
+                    installMessage.innerText = "To install the extension on Microsoft Edge:";
+		    installLink.innerHTML = '<ul><li>Go to <a href="edge://extensions/">edge://extensions/</a></li><li>Enable <em>Developer Mode</em></li><li>Click <em>Load Unpacked</em> and select the folder containing your extension files ; optionally, download and select this <a href="">ZIP archive</a></li>'
+                    //installLink.innerHTML = 'Click <a href="https://microsoftedge.microsoft.com/addons/detail/your-extension-id" target="_blank">here</a> to install it from the Microsoft Edge Add-ons store.';
+                    break;
+                case "Safari":
+                    installMessage.innerText = "To install the extension on Safari:";
+                    //installLink.innerHTML = 'Click <a href="https://apps.apple.com/us/app/your-extension-id" target="_blank">here</a> to install it from the Safari Extensions store.';
+                    installLink.innerHTML = 'I don\'t know, and it\s not in the app store';
+                    break;
+                default:
+                    installMessage.innerText = "Sorry, your browser is not supported for installation instructions.";
+                    installLink.innerHTML = '';
+                    break;
+            }
+
+            installSection.style.display = 'block';  // Show installation instructions
+        }
+
+        window.onload = showInstallationInstructions;  // Run the function on page load
+    </script>
+</head>
+<body>
+    <center><img src="{{ url_for('static', filename='favicon.svg') }}" height=250></center>
+
+    <h1>About <em>⨯post</em></h1>
+    <p>`⨯post` est un outil pour vous aider à rester propriétaire de vos données et a été conçu pour deux cas d'utilisation en particulier:</p>
+    <ul>
+        <li>vous remplissez un formulaire de contact sur une page web, mais le site ne vous transmet pas d'email avec la copie de votre demande ; généralement (et surtout lorsque celle-ci reste sans réponse), toute l'information est perdue (y compris le texte evoyé, mais aussi la date, l'heure..)</li>
+        <li>vous postez un commentaire sur un site (par exemple youtube, facebook...), le commentaire est d'abord accepté mais vous vous apercez par la suite qu'il a été censuré : déjà que vous avez fait attention à rester politiquement, vous n'avez plus les détails pour comprendre et il vous faut recommencer depuis le début</li>
+    </ul>
+
+    <h2>Proxy mode</h2>
+    <p>By design, <em>⨯post</em> works as a local (system- or network-wide) proxy ; if you happen to have a <a href="https://pi-hole.net/">Pi-Hole</a> already, <em>⨯post</em> will happily coexist on the same device and serve your entire network.</p>
+    <p>To use <em>⨯post</em>, configure your browser to route traffic through a proxy at <strong>&lt;TODO_listening_IP&gt;:8080</strong>.
+
+    <h2>Browser Extension</h2>
+    <p>If you prefer not to use a proxy, <em>⨯post</em> is also available as a browser extension:</p>
+
+    <div id="install-section" style="display:none;">
+        <p id="install-message"></p>
+        <p id="install-link"></p>
+    </div>
+
+    <p>This will only cath the posts and send them to the current app (the website you're watching now) ; however, it is expected that less data is capture this way (with the side effect that little to no filtering may be required)</p>
+
+    <h2>Development</h2>
+    <p>For bug reports or contributions, <em>⨯post</em> lives on <a href="https://github.com/petaflot/-post">GitHub</a></p>
+</body>
+</html>

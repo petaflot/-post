@@ -1,0 +1,32 @@
+{
+  "manifest_version": 2,
+  "name": "Form Interceptor",
+  "description": "Intercept and log form submissions via WebSocket",
+  "version": "1.0",
+  "permissions": [
+    "webNavigation",
+    "activeTab",
+    "storage",
+    "tabs",
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "applications": {
+    "gecko": {
+      "id": "form-interceptor@yourdomain.com"
+    }
+  },
+  "browser_action": {
+    "default_popup": "popup.html"
+  }
+}

@@ -1,9 +1,10 @@
 import asyncio
-from quart import Quart, websocket, render_template, request
+from quart import Quart, websocket, render_template, request, send_file
 from .db import init_db, db_writer
 from .ingest import ingest_ws
 from .stream import register, unregister
 from . import api
+from pathlib import Path
 
 app = Quart(__name__, template_folder="templates")
 
@@ -69,3 +70,32 @@ async def form():
         return f"Thanks! your comment was posted into nothingness ; <a href='/'>verify interception now</a>"
 
     return await render_template("test.html")
+
+EXTENSION_DIR = Path(__file__).parent / "browser_extension"
+
+def generate_zip():
+    import zipfile, os
+    zip_path = Path(__file__).parent / "crosspost.zip"
+
+    # Create a ZIP file with the content of the extension directory
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, dirs, files in os.walk(EXTENSION_DIR):
+            for file in files:
+                # Add each file to the ZIP file, preserving the directory structure
+                file_path = Path(root) / file
+                zipf.write(file_path, file_path.relative_to(EXTENSION_DIR))
+    
+    return zip_path
+
+@app.route('/download')
+async def download():
+    # Generate the ZIP file on the fly
+    zip_path = generate_zip()
+
+    # Serve the ZIP file to the user for download
+    return await send_file(str(zip_path), mimetype='application/zip', as_attachment=True)
+
+@app.route("/about")
+async def about_page():
+    return await render_template("about.html")
+
