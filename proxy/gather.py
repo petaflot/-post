@@ -200,3 +200,44 @@ def request(flow: http.HTTPFlow) -> None:
     elif method.upper() == "GET":
         parsed = flow.request.query
         log_form(method, url, parsed, timestamp)
+
+def response(flow: http.HTTPFlow) -> None:
+    # Check if it's a specific URL
+    if re.search("chatgpt\\.com/backend.*/conversation$", flow.request.pretty_url):
+        response_text = ''
+
+        # Decode the response content from bytes to string
+        response_content = flow.response.content.decode('utf-8')
+
+        # Split the content based on event boundaries (i.e., separating the events by '\n\ndata:')
+        events = response_content.split('\n\ndata:')
+
+        # Loop through each event and find the one where the content is appended
+        i = 0
+        for event in events:
+            i += 1
+            #print(f"event {i=}")
+            if event.strip():  # Skip empty events
+                event = event.split('\n')
+                for line in range(0,len(event),1):
+                    if event[line].startswith('data: '):
+                        try:
+                            line_data = json.loads(event[line][6:])
+                        except json.JSONDecodeError:
+                            print(f"JSONDecodeError: {event[line]}")
+                        else:
+                            if type(line_data) is dict and type(line_data['v']) is list:
+                                response_text += line_data['v'][0]['v']
+                            else:
+                                pass
+                            try:
+                                # this appears a LOT of times, but we catch it only once
+                                conversation_id = line_data['v']['conversation_id']
+                            except:
+                                pass
+
+        # TODO log, do some tracking.. etc.
+        print(f"ChatGPT {conversation_id=} {response_text=}")
+
+    # juste une ânerie..
+    flow.response.content = flow.response.content.replace(b"nice", b"Brice de Nice").replace(b"mine de rien", bytes("ce gisement est épuisé",'utf-8'))

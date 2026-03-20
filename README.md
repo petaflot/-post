@@ -1,19 +1,18 @@
 # ⨯post
 
-`⨯post` est un outil pour vous aider à rester propriétaire de vos données et a été conçu pour deux cas d'utilisation en particulier:
-* vous remplissez un formulaire de contact sur une page web, mais le site ne vous transmet pas d'email avec la copie de votre demande ; généralement (et surtout lorsque celle-ci reste sans réponse), toute l'information est perdue (y compris le texte evoyé, mais aussi la date, l'heure..)
-* vous postez un commentaire sur un site (par exemple youtube, facebook...), le commentaire est d'abord accepté mais vous vous apercez par la suite qu'il a été censuré : déjà que vous avez fait attention à rester politiquement, vous n'avez plus les détails pour comprendre et il vous faut recommencer depuis le début
+`⨯post` is a tool designed to help you stay in control of your data, specifically built for two main use cases:
+* You fill out a contact form on a website, but the site does not send you an email with a copy of your submission; generally (especially when no response is received), all the information is lost (including the text sent, but also the date, time, etc.).
+* You post a comment on a site (for example, YouTube, Facebook...), the comment is initially accepted but later you notice that it has been censored: even though you were careful to be politically correct, you no longer have the details to understand why and have to start over from scratch.
 
-## Fonctionnement
+## How It Works
 
-`⨯post` crée un [serveur proxy](https://fr.wikipedia.org/wiki/Proxy) par lequel transite votre traffic Internet ; pour des raisons de confidentialité et de performance, ce proxy est **local** (sur votre machine ou réseau local). Ce composant de `⨯post` (qui est est **libre, gratuit et open-source**) dispose d'une interface simple qui vous permet de:
-* consulter les données que vous avez envoyé à des tiers
-* gérer le filtrage de ces données (ie. ignorer certains sites) et ce qui est enregistré (par défaut les mots de passe ne sont pas enregistrés, les numéros de téléphone sont obfusqués)
-* selon la configuration, `⨯post` peut faire office d'historique de navigation (particulièrement utile si vous utilisez le même proxy pour plusieurs clients)
-* publier tout ou partie d'un post sur `⨯post.com`, de manière publique ou semi-privée, en indiquant la raison de la re-publication (par exemple "ce contenu a été censuré"). La re-publication est soumise à un abonnement à prix libre (montant minimum pour couvrir les frais: 7$/an, soit moins de 2ct./jour) ; à tout moment, vous pouvez choisir d'effacer la copie de vos commentaires.
+`⨯post` creates a [proxy server](https://en.wikipedia.org/wiki/Proxy) through which your internet traffic passes; for privacy and performance reasons, this proxy is **local** (on your machine or local network). This component of `⨯post` (which is **free, open-source, and open** to the public) has a simple interface that allows you to:
+* view the data you have sent to third parties
+* manage the filtering of this data (i.e., ignore certain websites) and what is logged (by default, passwords are not recorded, phone numbers are obfuscated)
+* depending on the configuration, `⨯post` can act as a browsing history (particularly useful if you use the same proxy for multiple clients)
+* publish all or part of a post on `⨯post.com`, either publicly or semi-privately, indicating the reason for republishing (for example, "this content was censored"). Republishing is subject to a subscription with a pay-what-you-can model (the minimum amount to cover expenses: $7/year, which is less than 2 cents/day); at any time, you can choose to delete your comment's copy.
 
-À terme, `⨯post` peut servir à établir des statistiques sur les sites qui censurent le contenu des utilisateurs, ainsi que sur la part du contenu qui a causé la censure.
-
+Ultimately, `⨯post` can be used to generate statistics on websites that censor user content, as well as the proportion of content that caused the censorship.
 
 ## Installation
 
@@ -38,7 +37,7 @@
 
 Note: this is untested!
 
-## Structure du projet
+## Project stucture
 ```
 xpot/
 ├── app/
@@ -49,18 +48,17 @@ xpot/
 │   ├── api.py           # HTTP routes
 │   ├── stream.py        # WS broadcast
 │   └── templates/
-│       ├── index.html
-│       └── post.html
+│       └── *.html       # HTML templates
 │
 ├── proxy/
 │   ├── config.json      # filters by protocol, URL, field name ; obfuscation parameters
 │   └── gather.py        # mitmproxy script
 │
 ├── data/
-│   └── traffic.db
+│   └── traffic.db       # sqlite database with the captured data
 │
 ├── requirements.txt
-└── run.sh
+└── run.sh               # script to start the service
 ```
 
 ## TODO

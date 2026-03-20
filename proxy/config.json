@@ -2,8 +2,8 @@
   "log_dir": "logs",
   "method_filters": {
     "GET": "^$",
-    "POST": "^$",
-    "CRAP": "^(?!https?://(?:[a-zA-Z0-9-]+\\.)?(mon-net\\.org|chatgpt\\.com|exclude\\.com$|ignore\\.example\\.com|google|telemetry|github\\.com|ads\\.mozilla\\.org|ajay\\.app|ketchcdn\\.com|ngrok.\\com|youtube\\.com/(api|youtubei))).*(?!https?://(?:[a-zA-Z0-9-]+\\.)?(include\\.exclude\\.com|create_comment)).*"
+    "POST": "^(?!https?://(?:[a-zA-Z0-9-]+\\.)?(mon-net\\.org|exclude\\.com$|ignore\\.example\\.com|google|telemetry|github\\.com|ads\\.mozilla\\.org|ajay\\.app|ketchcdn\\.com|ngrok\\.com|youtube\\.com/(api|youtubei)|chatgpt\\.com/backend-anon/sentinel/|chatgpt\\.com/ces/statsc/flush|chatgpt\\.com/backend-anon/f/conversation/prepare|chatgpt\\.com/backend-api/f/conversation/prepare|chatgpt\\.com/backend-api/sentinel/|chatgpt\\.com/backend-api/lat/r)).*(?!https?://(?:[a-zA-Z0-9-]+\\.)?(include\\.exclude\\.com|create_comment|conversation)).*",
+    "RESPONSE": "(?!https?://(?:[a-zA-Z0-9-]+\\.)?(chatgpt)).*"
   },
   "field_rules": [
     {

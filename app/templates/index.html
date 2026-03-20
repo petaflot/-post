@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Posts</title>
+    <title>⨯post - Live Posts</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <!-- PNG fallback for browsers that do not support SVG favicons -->
     <!-- link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png" --!>
@@ -172,7 +172,7 @@ function render(posts) {
         row.innerHTML = `
             <td>
                 <img src="${faviconUrl}" alt="favicon" width="16" height="16" />
-                <a href="${p.url}" target="_blank">${displayUrl}</a>
+                <a href="/post?uuid=${p.uuid}" target="_blank">${displayUrl}</a>
             </td>
             <td>${time}</td>
             <td>

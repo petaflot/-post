@@ -14,7 +14,7 @@ fetch("/posts/" + uuid)
         const div = document.getElementById("content");
 
         div.innerHTML = `
-            <p><b>URL:</b> ${data.url}</p>
+            <p><b>URL:</b> <a href="${data.url}">${data.url}</a></p>
             <p><b>Timestamp:</b> ${data.timestamp}</p>
             <h3>Fields</h3>
         `;
