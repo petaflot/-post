@@ -1,17 +1,15 @@
-#!/usr/bin/python
-
 import json
 import re
 import os
+import importlib.util
 from mitmproxy import http
 from datetime import datetime
 from pathlib import Path
 import urllib.parse
-from urllib.parse import urlparse
 import websockets
 import asyncio
 
-DEBUG_OUTPUT = False
+DEBUG_OUTPUT = True
 
 # -----------------------------
 # Load external JSON config
@@ -20,65 +18,26 @@ CONFIG_FILE = Path(__file__).parent / "config.json"
 with open(CONFIG_FILE, "r", encoding="utf-8") as f:
     config = json.load(f)
 
-METHOD_FILTERS = config.get("method_filters", {})
-FIELD_RULES = config.get("field_rules", [])
-
 LOG_TO_FILE = False
 LOG_DIR = config.get("log_dir", '/tmp/xpost_log')
+HANDLERS = config.get("configured_handlers", ['fallback'])
+
 
 # -----------------------------
 # Helper functions
 # -----------------------------
+WS_URL = "ws://127.0.0.1:12345/ingest"  # WebSocket endpoint
+write_queue = asyncio.Queue(maxsize=10000)  # Queue for WebSocket logging
 
-if not LOG_TO_FILE:
-    WS_URL = "ws://127.0.0.1:12345/ingest"  # WebSocket endpoint    # TODO read HOST/PORT from config or something.. redundancy with ../run.sh !!!
-    write_queue = asyncio.Queue(maxsize=10000)  # Queue for WebSocket logging
+async def send_to_websocket(data: dict):
+    try:
+        async with websockets.connect(WS_URL) as ws:
+            await ws.send(json.dumps(data))
+    except Exception as e:
+        print(f"Error sending to WebSocket: {e}")
 
-    async def send_to_websocket(data: dict):
-        try:
-            async with websockets.connect(WS_URL) as ws:
-                await ws.send(json.dumps(data))
-        except Exception as e:
-            print(f"Error sending to WebSocket: {e}")
-
-def should_log(method: str, url: str) -> bool:
-    method = method.upper()
-    regex = METHOD_FILTERS.get(method)
-    return regex is not None and re.search(regex, url) is not None
-
-def process_field(key: str, value: str):
-    """Return (pattern, log_name, processed_value) or None if never log"""
-    for rule in FIELD_RULES:
-        pattern = rule.get("pattern")
-        if re.search(pattern, key, re.IGNORECASE):
-            mode = rule.get("mode", "obfuscate")
-            log_name = rule.get("log_name") or key
-            value_regex = rule.get("value_regex")
-
-            if mode == "never":
-                return None
-
-            if mode == "log":
-                return pattern, log_name, value
-
-            if mode == "obfuscate":
-                if value_regex:
-                    try:
-                        value = re.sub(value_regex, "*", value)
-                    except Exception:
-                        pass
-                return pattern, log_name, value
-    return None  # fallback: never log
-
-def format_log_data(url: str, fields: dict, timestamp: str):
-    log_data = f"# {urlparse(url).hostname} {timestamp}\n"
-    log_data += f"url: {url}\n"
-    for key, value in fields.items():
-        log_data += f"{key}: {value}\n"
-    return log_data
-
-def generate_logfile(method: str, url: str) -> str:
-    parsed_url = urlparse(url)
+def generate_logfile(url: str) -> str:
+    parsed_url = urllib.parse.urlparse(url)
     fqdn = parsed_url.hostname
     path = parsed_url.path
 
@@ -92,47 +51,54 @@ def generate_logfile(method: str, url: str) -> str:
 
     return log_path
 
+"""
 def log_entry(path: str, text: str) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "a", encoding="utf-8") as f:
         f.write(text + "\n")
+"""
 
-def log_form(method, url, form_data, timestamp):
+def format_log_data(url: str, fields: dict, timestamp: str):
+    log_data = f"# {urllib.parse.urlparse(url).hostname} {timestamp}\n"
+    log_data += f"url: {url}\n"
+    for key, value in fields.items():
+        log_data += f"{key}: {value}\n"
+    return log_data
+
+def log_form(url, form_data, timestamp):
     log_data = format_log_data(url, form_data, timestamp)
 
     if LOG_TO_FILE:
-        log_path = generate_logfile(method, url)
+        log_path = generate_logfile(url)
         log_entry(log_path, log_data)
     else:
-        # Send log data through WebSocket
         log_data_dict = {
-            "uuid": str(datetime.utcnow().timestamp()),  # placeholder for actual UUID generation
+            "uuid": str(datetime.utcnow().timestamp()),  
             "url": url,
             "timestamp": int(datetime.utcnow().timestamp()),
             "fields": {k: v for k, v in form_data.items()}
         }
-        #"fields": [{"name": k, "content": v} for k, v in form_data.items()]
         asyncio.get_event_loop().create_task(send_to_websocket(log_data_dict))
 
-def log_json(method, url, json_data, timestamp):
-    """Log JSON data to a file or send via WebSocket."""
+def log_json(url, json_data, timestamp):
+    if json_data is None:
+        return
+
     log_data = format_log_data(url, json_data, timestamp)
 
     if LOG_TO_FILE:
-        log_path = generate_logfile(method, url)
+        log_path = generate_logfile(url)
         log_entry(log_path, log_data)
     else:
-        # Send log data through WebSocket
         log_data_dict = {
-            "uuid": str(datetime.utcnow().timestamp()),  # Placeholder for actual UUID generation
+            "uuid": str(datetime.utcnow().timestamp()),
             "url": url,
             "timestamp": int(datetime.utcnow().timestamp()),
-            "fields": flatten_json(json_data)  # Flatten the JSON data
+            "fields": flatten_json(json_data)
         }
         asyncio.get_event_loop().create_task(send_to_websocket(log_data_dict))
 
 def flatten_json(data):
-    """Flatten a JSON object, converting nested objects into key-value pairs."""
     flat = {}
     
     def flatten(data, parent_key=''):
@@ -150,94 +116,62 @@ def flatten_json(data):
     flatten(data)
     return flat
 
+def import_handler(handler_name: str):
+    """Dynamically import handler module."""
+    handler_path = Path(__file__).parent / "website_handlers" / f"{handler_name}.py"
+    spec = importlib.util.spec_from_file_location(handler_name, handler_path)
+    handler_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(handler_module)
+    return handler_module
+
+def should_log(url: str) -> str:
+    # Determine the handlers for POST and GET mehods
+    handlers_dir = Path(__file__).parent / "website_handlers"
+
+    for handler_name in HANDLERS:
+        handler_module = import_handler(handler_name)
+
+        # Check if the handler defines a regex match
+        if hasattr(handler_module, "regex_match"):
+            if re.search(handler_module.regex_match, url):
+                return handler_name
+
+    return None
+
 # -----------------------------
 # mitmproxy request hook
 # -----------------------------
 def request(flow: http.HTTPFlow) -> None:
-    method = flow.request.method
-    url = flow.request.url
-    timestamp = datetime.now().astimezone().isoformat()
-
-    if not should_log(method, url):
-        if DEBUG_OUTPUT: print(f"Not logging {url}")
+    #print(f"{flow.request.url=} {flow.request.pretty_url=}")
+    url = flow.request.pretty_url
+    handler_name = should_log(url)
+    if handler_name is None:
+        if DEBUG_OUTPUT: print(f"No handler matching {url}")
         return
 
-
-    if method.upper() == "POST":
-        content_type = flow.request.headers.get("content-type", "")
-        if DEBUG_OUTPUT: print(f"{content_type=}")
-
-        body = flow.request.get_text()
-
-        # For form data like application/x-www-form-urlencoded
-        if "application/x-www-form-urlencoded" in content_type:
-            parsed = flow.request.urlencoded_form
-
-            log_form(method, url, parsed, timestamp)
-
-        elif "application/json" in content_type:
-            try:
-                data = json.loads(body)
-                if isinstance(data, dict):
-                    log_json(method, url, data, timestamp)
-            except Exception:
-                log_path = generate_logfile(method, url)
-                log_entry(log_path, "JSON PARSE ERROR\n")
-
-        elif "multipart/form-data" in content_type:
-            try:
-                form_data = flow.request.multipart_form
-                log_form(method, url, form_data, timestamp)
-
-            except Exception:
-                log_path = generate_logfile(method, url)
-                log_entry(log_path, "MULTIPART PARSE ERROR\n")
-
+    timestamp = datetime.now().astimezone().isoformat()
+    handler_module = import_handler(handler_name)
+    try:
+        result = handler_module.handle_request(url, flow.request, timestamp)
+    except AttributeError:
+        pass
+    else:
+        if type(result) is dict:
+            log_form(url, result, timestamp)
         else:
-            log_path = generate_logfile(method, url)
-            log_entry(log_path, body + "\n")
+            log_json(url, result, timestamp)
 
-    elif method.upper() == "GET":
-        parsed = flow.request.query
-        log_form(method, url, parsed, timestamp)
 
 def response(flow: http.HTTPFlow) -> None:
-    # Check if it's a specific URL
-    if re.search("chatgpt\\.com/backend.*/conversation$", flow.request.pretty_url):
-        response_text = ''
+    url = flow.request.pretty_url
+    handler_name = should_log(url)
+    if handler_name is None:
+        if DEBUG_OUTPUT: print(f"No handler matching {url}")
+        return
 
-        # Decode the response content from bytes to string
-        response_content = flow.response.content.decode('utf-8')
-
-        # Split the content based on event boundaries (i.e., separating the events by '\n\ndata:')
-        events = response_content.split('\n\ndata:')
-
-        # Loop through each event and find the one where the content is appended
-        i = 0
-        for event in events:
-            i += 1
-            #print(f"event {i=}")
-            if event.strip():  # Skip empty events
-                event = event.split('\n')
-                for line in range(0,len(event),1):
-                    if event[line].startswith('data: '):
-                        try:
-                            line_data = json.loads(event[line][6:])
-                        except json.JSONDecodeError:
-                            print(f"JSONDecodeError: {event[line]}")
-                        else:
-                            if type(line_data) is dict and type(line_data['v']) is list:
-                                response_text += line_data['v'][0]['v']
-                            else:
-                                pass
-                            try:
-                                # this appears a LOT of times, but we catch it only once
-                                conversation_id = line_data['v']['conversation_id']
-                            except:
-                                pass
-
-        # TODO log, do some tracking.. etc.
-        print(f"ChatGPT {conversation_id=} {response_text=}")
-
-    # juste une ânerie..
-    flow.response.content = flow.response.content.replace(b"nice", b"Brice de Nice").replace(b"mine de rien", bytes("ce gisement est épuisé",'utf-8'))
+    timestamp = datetime.now().astimezone().isoformat()
+    handler_module = import_handler(handler_name)
+    try:
+        result = handler_module.handle_response(url, flow.request, flow.response, timestamp)
+    except AttributeError:
+        pass

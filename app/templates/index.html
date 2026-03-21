@@ -23,7 +23,8 @@
 	    overflow: hidden;
 	    width: 20em;
 	    text-align: center;
-	    background: #c0c0c0
+	    background: #c0c0c0;
+	    float: right;
 	}
 
         h2 {
@@ -82,7 +83,7 @@
 
 <h2><a{{ url_for('static', filename='favicon.svg') }} href="https://xpost.com/"><img src="{{ url_for('static', filename='favicon.svg') }}" height=42></a>⨯post</h2>
 
-<div class='moto'><i>"keeping track of your POST data"</i></div>
+<div class='moto'><i>"own your own words"</i></div>
 
 
 <input type="text" id="search" placeholder="Filter URL...">
@@ -175,15 +176,10 @@ function render(posts) {
                 <a href="/post?uuid=${p.uuid}" target="_blank">${displayUrl}</a>
             </td>
             <td>${time}</td>
-            <td>
-                ${isProtected ? '' : `<button onclick="deletePost('${p.uuid}')">🗑</button>`}
-            </td>
-            <td>
-                <button onclick="reportPost('${p.uuid}')">�</button>
-            </td>
-            <td>
-                <input type="checkbox" ${isProtected ? 'checked' : ''} onclick="protectPost('${p.uuid}', this)">
-            </td>
+            <td>${isProtected ? '' : `<button onclick="deletePost('${p.uuid}')">🗑</button>`}</td>
+            <td><button id="reportBtn-${p.uuid}" onclick="reportPost('${p.uuid}', this)">Report</button></td>
+            <td><input type="checkbox" ${isProtected ? 'checked' : ''} onclick="protectPost('${p.uuid}', this)"></td>
+            <td><input type="checkbox" ${p.isCensored ? 'checked' : ''} onclick="markCensored('${p.uuid}', this)"></td>
         `;
 
         postsContainer.appendChild(row);
@@ -199,7 +195,10 @@ async function deletePost(uuid) {
     applyFilter();
 }
 
-async function reportPost(uuid) {
+async function reportPost(uuid, button) {
+    // Disable the button after click to avoid multiple submissions
+    button.disabled = true;
+    
     // OPTION A: direct external call
     await fetch("https://example.com/report", {
         method: "POST",
@@ -211,7 +210,7 @@ async function reportPost(uuid) {
 }
 
 async function purgeAllPosts() {
-    if (confirm("Are you sure you want to purge all posts?")) {
+    if (confirm("Are you sure you want to purge all unprotected posts?")) {
         // Remove protected posts before purging
         const postsToDelete = allPosts.filter(p => !protectedPosts.includes(p.uuid));
         for (const post of postsToDelete) {
@@ -224,7 +223,7 @@ async function purgeAllPosts() {
 }
 
 async function purgePostsForDay(day) {
-    if (confirm(`Are you sure you want to purge all records for ${day}?`)) {
+    if (confirm(`Are you sure you want to purge all unprotected records for ${day}?`)) {
         // Remove protected posts before purging
         const postsToDelete = allPosts.filter(p => formatDay(p.timestamp) === day && !protectedPosts.includes(p.uuid));
 
@@ -253,6 +252,24 @@ function protectPost(uuid, checkbox) {
     }
 
     render(allPosts); // Re-render the posts with updated protection status
+}
+
+function markCensored(uuid, checkbox) {
+    if (checkbox.checked) {
+        // Mark the post as censored (example handling)
+        const post = allPosts.find(p => p.uuid === uuid);
+        if (post) post.isCensored = true;
+    } else {
+        if (confirm("Are you absolutely positive this post was not actually censored?")) {
+            const post = allPosts.find(p => p.uuid === uuid);
+            if (post) post.isCensored = false;
+        } else {
+            // Revert checkbox to censored state
+            checkbox.checked = true;
+        }
+    }
+
+    render(allPosts); // Re-render the posts with updated protection/censorship status
 }
 
 // ---- Filtering ----
